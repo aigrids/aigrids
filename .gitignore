@@ -1,2 +1,4 @@
 .DS_Store
-
+dist
+src/aidotgrids.egg-info/
+notes.rtf
