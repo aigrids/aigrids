@@ -25,6 +25,8 @@ import solarcube
 import buildingelectricity
 import windfarm
 
+HUGGING_FACE_BASE = 'AI-grids'
+
 LIST_AVAIL_TASKNAMES = [
     'OPFData',
     'PowerGraph',
@@ -155,7 +157,7 @@ def _download_hf_repo(
     """
     print(f"Preparing local data directory for {task_name}")
 
-    repo_id = f'AI-grids/{task_name}'
+    repo_id = f'{HUGGING_FACE_BASE}/{task_name}'
 
     # Step 1: Collect all files (recursively)
     files_to_download = []
