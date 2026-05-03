@@ -9,16 +9,20 @@ or
     $ pytest
 
 """
+import os
 import string
 import random
 
 from aidotgrids import load
 
 # create a random root path name
-root_path = "~/AI-grid/test_opfdata_".join(
+random_string = ''.join(
     random.choice(string.ascii_letters) for _ in range(7)
 )
 
+root_path = os.path.expanduser(
+    "~/AI-grid/test_opfdata_" + random_string
+)
 
 dataset = load.load_task(
     "OPFData", 
