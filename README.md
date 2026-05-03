@@ -3,8 +3,8 @@
 ## Overview
 
 1. [Quick start](#1-quick-start)
-2. [Datasets](#3-datasets)
-3. [Contributions](#4-contributions)
+2. [Datasets](#2-datasets)
+3. [Contributing](#3-contributing)
 
 
 ## 1. Quick start
@@ -48,7 +48,7 @@ ds = load(
 )
 ```
 
-## 3. Contributions
+## 3. Contributing
 
 We welcome pull requests for new datasets, models and algorithms, or simply a 
 fix in our code. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening 
