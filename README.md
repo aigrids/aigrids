@@ -9,13 +9,13 @@
 
 ## 1. Quick start
 
-Install stable version - option A:
+Install stable version (option A):
 
 ```bash
 pip install -U aidotgrids
 ```
 
-Install bleeding-edge version - option B:
+Or, install bleeding-edge version (Option B):
 
 ```bash
 pip uninstall -y aidotgrids         # ensure the PyPI version is removed
