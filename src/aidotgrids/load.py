@@ -2,9 +2,9 @@
 
 Example usage:
 --------------
-    from aidotgrids import load_task
+    from aidotgrids import load
 
-    dataset = load_task(
+    ds = load.load_task(
         task_name='OPFData', 
         subtask_name='train_small_test_medium',
         root_path='~/AI-grids/'
