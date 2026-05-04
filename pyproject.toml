@@ -22,6 +22,7 @@ keywords = [
   "Power Systems",
 ]
 dependencies = [
+  "requests>=2.0",
   "numpy>=2.0",
   "pandas>=2.0",
   "h5py>=3.0.0",

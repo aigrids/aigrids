@@ -15,7 +15,8 @@ import os
 import sys
 import math
 import requests
-import subprocess
+import zipfile
+import tarfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # individual task loading modules
@@ -62,7 +63,7 @@ def load_task(
     )
 
     # set path to local directory
-    local_dir = os.path.join(root_path, task_name)
+    local_dir = os.path.join(os.path.expanduser(root_path), task_name)
 
     # download task repository (skips already-downloaded & already-uncompressed)
     _download_hf_repo(
@@ -175,7 +176,7 @@ def _download_hf_repo(
         for future in as_completed(future_to_file):
             url, local_path = future_to_file[future]
             try:
-                future.result()  # will raise CalledProcessError if 'wget' fails
+                future.result()  # raises if download fails
             except Exception as e:
                 print(f"Download failed/skipped for {url}: {e}")
 
@@ -235,73 +236,72 @@ def _collect_files(repo_id: str, local_dir: str, subpath: str, files_list: list)
         elif entry_type == 'directory':
             _collect_files(repo_id, local_dir, subpath=entry_path, files_list=files_list)
 
-
 def _download_single_file(url: str, local_path: str):
     """
-    Download a single file via wget subprocess call. Skips if:
+    Download a single file. Skips if:
       1) local file already exists, OR
-      2) the uncompressed directory already exists (for compressed files).
-    If the uncompressed directory exists, also removes any leftover .zip/.tar* 
-    to keep things clean.
-
+      2) the uncompressed directory already exists.
     """
-    # If file already exists, skip
+
     if os.path.exists(local_path):
         print(f"[SKIP] {local_path} already present.")
         return
 
-    # If it's a compressed file, check if the uncompressed data is already there.
     if _is_compressed_file(local_path):
         base_folder = _guess_uncompressed_dir(local_path)
         if base_folder and os.path.isdir(base_folder):
-            # If we see the final uncompressed folder is present, skip download.
-            # Also remove leftover compressed file if it somehow exists.
             if os.path.exists(local_path):
                 os.remove(local_path)
+
             print(f"[SKIP] '{base_folder}' is already uncompressed.")
             return
 
-    # If we reach here, we proceed with download
     os.makedirs(os.path.dirname(local_path), exist_ok=True)
+
     print(f"Downloading {url} -> {local_path}")
-    subprocess.run(["wget", "-q", "-O", local_path, url], check=True)
+
+    response = requests.get(url, stream=True)
+    response.raise_for_status()
+
+    with open(local_path, "wb") as f:
+        for chunk in response.iter_content(chunk_size=8192):
+            if chunk:
+                f.write(chunk)
 
 
 def _uncompress_and_delete_file(file_path: str):
     """
-    Decompress a file (zip/tar/tar.gz) into its directory, then delete 
-    the original. If the uncompressed data is already present, skip 
+    Decompress a zip/tar/tar.gz file using Python standard libraries, then delete
+    the compressed file. If the uncompressed data is already present, skip
     decompression but still remove the compressed file.
-
     """
     if not os.path.exists(file_path):
-        return  # someone else might have deleted it already
+        return
 
     parent_dir = os.path.dirname(file_path)
     base_folder = _guess_uncompressed_dir(file_path)
 
-    # If we already have the uncompressed data, skip decompress, but remove.
     if base_folder and os.path.isdir(base_folder):
         print(f"[SKIP] already decompressed: {base_folder}. Remove {file_path}.")
         os.remove(file_path)
         return
 
-    # Now figure out the correct decompression command
+    print(f"Uncompressing {file_path}.")
+
     if file_path.endswith(".zip"):
-        cmd = ["unzip", "-o", file_path, "-d", parent_dir]
-    elif file_path.endswith(".tar.gz"):
-        cmd = ["tar", "-xzf", file_path, "-C", parent_dir]
-    elif file_path.endswith(".tar"):
-        cmd = ["tar", "-xf", file_path, "-C", parent_dir]
+        with zipfile.ZipFile(file_path, "r") as archive:
+            archive.extractall(parent_dir)
+
+    elif file_path.endswith(".tar.gz") or file_path.endswith(".tar"):
+        with tarfile.open(file_path, "r:*") as archive:
+            archive.extractall(parent_dir)
+
     else:
         print(f"[SKIP] Unrecognized compression format: {file_path}")
         return
 
-    print(f"Uncompressing {file_path}.")
-    subprocess.run(cmd, check=True)
     print(f"Deleting {file_path}.")
     os.remove(file_path)
-
 
 def _is_compressed_file(local_path: str) -> bool:
     """

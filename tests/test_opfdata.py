@@ -21,7 +21,7 @@ random_string = ''.join(
 )
 
 root_path = os.path.expanduser(
-    "~/AI-grid/test_opfdata_" + random_string
+    "~/AI-grids/test_opfdata_" + random_string
 )
 
 dataset = load.load_task(
