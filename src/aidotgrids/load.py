@@ -30,6 +30,7 @@ from . import windfarm
 # Global variables
 HUGGING_FACE_BASE = 'AI-grids'
 
+
 LIST_AVAIL_TASKNAMES = [
     'OPFData',
     'PowerGraph',
@@ -172,14 +173,16 @@ def _download_hf_repo(
     # Step 2: Download them in parallel (only if needed)
     print(f"\nFound {len(files_to_download)} files to manage (download if needed).")
     with ThreadPoolExecutor(max_workers=max_workers_download) as executor:
-        future_to_file = {
-            executor.submit(_download_single_file, url, local_path): (url, local_path)
-            for (url, local_path) in files_to_download
-        }
+        future_to_file = {}
+        for (url, local_path) in files_to_download:
+            submit_job = executor.submit(_download_single_file, url, local_path)
+            future_to_file[submit_job] = (url, local_path)
+
         for future in as_completed(future_to_file):
             url, local_path = future_to_file[future]
             try:
                 future.result()  # raises if download fails
+
             except Exception as e:
                 print(f"Download failed/skipped for {url}: {e}")
 
@@ -187,22 +190,24 @@ def _download_hf_repo(
 
     # Step 3: Uncompress files in parallel if needed
     compressed_exts = (".zip", ".tar.gz", ".tar")
-    compressed_files = [
-        local_path for (_, local_path) in files_to_download 
-        if local_path.endswith(compressed_exts) and os.path.exists(local_path)
-    ]
+    compressed_files = []
+    for (_, local_path) in files_to_download:
+        if local_path.endswith(compressed_exts) and os.path.exists(local_path):
+            compressed_files.append(local_path)
 
     if compressed_files:
         print(f"Uncompressing {len(compressed_files)} files (if needed) in parallel.")
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            future_to_compressed = {
-                executor.submit(_uncompress_and_delete_file, path): path 
-                for path in compressed_files
-            }
+            future_to_compressed = {}
+            for path in compressed_files:
+                submit_job = executor.submit(_uncompress_and_delete_file, path)
+                future_to_compressed[submit_job] = path
+
             for future in as_completed(future_to_compressed):
                 path = future_to_compressed[future]
                 try:
                     future.result()
+                    
                 except Exception as e:
                     print(f"Uncompress & delete failed for {path}: {e}")
         
@@ -222,6 +227,7 @@ def _collect_files(repo_id: str, local_dir: str, subpath: str, files_list: list)
     try:
         response = requests.get(api_url)
         response.raise_for_status()
+
     except requests.exceptions.RequestException as e:
         print(f"Error fetching file list: {e}")
         return
@@ -236,6 +242,7 @@ def _collect_files(repo_id: str, local_dir: str, subpath: str, files_list: list)
         if entry_type == 'file':
             file_url = f"https://huggingface.co/datasets/{repo_id}/resolve/main/{entry_path}"
             files_list.append((file_url, local_entry_path))
+
         elif entry_type == 'directory':
             _collect_files(repo_id, local_dir, subpath=entry_path, files_list=files_list)
 
