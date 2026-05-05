@@ -6,7 +6,7 @@ Example usage:
     $ python tests/test_buildingelectricity.py
 
 or
-    $ pytest
+    $ pytest tests/test_buildingelectricity.py
 
 """
 import os
