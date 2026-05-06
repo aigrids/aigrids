@@ -364,7 +364,7 @@ def _uncompress_and_delete_file(file_path: str):
 
     elif file_path.endswith(".tar.gz") or file_path.endswith(".tar"):
         with tarfile.open(file_path, "r:*") as archive:
-            archive.extractall(parent_dir)
+            archive.extractall(parent_dir, filter="data")
 
     else:
         print(f"[SKIP] Unrecognized compression format: {file_path}")
