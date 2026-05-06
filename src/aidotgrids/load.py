@@ -13,11 +13,14 @@ Example usage:
 """
 import os
 import sys
+import time
 import math
 import requests
 import zipfile
 import tarfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 # individual task loading modules
 from . import opfdata
@@ -28,6 +31,10 @@ from . import windfarm
 
 
 # Global variables
+DOWNLOAD_CHUNK_SIZE = 8 * 1024 * 1024  # 8 MiB
+DOWNLOAD_RETRIES = 20
+DOWNLOAD_TIMEOUT = (30, 180)  # connect, read timeout
+
 HUGGING_FACE_BASE = 'AI-grids'
 
 
@@ -46,7 +53,7 @@ def load_task(
     data_frac: int = 1,
     train_frac: int = 1,
     max_workers: int = 1024,
-    max_workers_download: int = 4
+    max_workers_download: int = 2
 ) -> dict:
     """
     Download task repository (if needed) and load standardized subtask.
@@ -184,7 +191,7 @@ def _download_hf_repo(
                 future.result()  # raises if download fails
 
             except Exception as e:
-                print(f"Download failed/skipped for {url}: {e}")
+                raise RuntimeError(f"Download failed for {url}") from e
 
     print(f"Data for {repo_id} is now available at {local_dir}.\n")
 
@@ -246,12 +253,13 @@ def _collect_files(repo_id: str, local_dir: str, subpath: str, files_list: list)
         elif entry_type == 'directory':
             _collect_files(repo_id, local_dir, subpath=entry_path, files_list=files_list)
 
-
 def _download_single_file(url: str, local_path: str):
     """
-    Download a single file. Skips if:
-      1) local file already exists, OR
-      2) the uncompressed directory already exists.
+    Download a single file with resume support.
+
+    Writes to local_path + ".part" first, resumes incomplete downloads via HTTP
+    Range requests, and only moves to the final path after the expected size is
+    reached.
     """
 
     if os.path.exists(local_path):
@@ -261,23 +269,74 @@ def _download_single_file(url: str, local_path: str):
     if _is_compressed_file(local_path):
         base_folder = _guess_uncompressed_dir(local_path)
         if base_folder and os.path.isdir(base_folder):
-            if os.path.exists(local_path):
-                os.remove(local_path)
-
             print(f"[SKIP] '{base_folder}' is already uncompressed.")
             return
 
     os.makedirs(os.path.dirname(local_path), exist_ok=True)
 
-    print(f"Downloading {url} -> {local_path}")
+    part_path = local_path + ".part"
+    session = _make_session()
+    expected_size = _remote_file_size(url, session)
 
-    response = requests.get(url, stream=True)
-    response.raise_for_status()
+    for attempt in range(1, DOWNLOAD_RETRIES + 1):
+        existing_size = os.path.getsize(part_path) if os.path.exists(part_path) else 0
 
-    with open(local_path, "wb") as f:
-        for chunk in response.iter_content(chunk_size=8192):
-            if chunk:
-                f.write(chunk)
+        if expected_size is not None and existing_size == expected_size:
+            os.replace(part_path, local_path)
+            print(f"[DONE] {local_path}")
+            return
+
+        headers = {}
+        mode = "wb"
+
+        if existing_size > 0:
+            headers["Range"] = f"bytes={existing_size}-"
+            mode = "ab"
+
+        try:
+            print(
+                f"Downloading {url} -> {local_path} "
+                f"(attempt {attempt}/{DOWNLOAD_RETRIES}, resume at {existing_size} bytes)"
+            )
+
+            with session.get(
+                url,
+                stream=True,
+                headers=headers,
+                timeout=DOWNLOAD_TIMEOUT,
+                allow_redirects=True,
+            ) as response:
+
+                # If resume was requested but server ignores Range, restart cleanly.
+                if existing_size > 0 and response.status_code != 206:
+                    print("[WARN] Server did not honor Range request. Restarting file.")
+                    os.remove(part_path)
+                    continue
+
+                response.raise_for_status()
+
+                with open(part_path, mode) as f:
+                    for chunk in response.iter_content(chunk_size=DOWNLOAD_CHUNK_SIZE):
+                        if chunk:
+                            f.write(chunk)
+
+            final_size = os.path.getsize(part_path)
+
+            if expected_size is not None and final_size != expected_size:
+                raise IOError(
+                    f"incomplete download: got {final_size} bytes, "
+                    f"expected {expected_size} bytes"
+                )
+
+            os.replace(part_path, local_path)
+            print(f"[DONE] {local_path}")
+            return
+
+        except Exception as e:
+            print(f"[WARN] Download interrupted for {url}: {e}")
+            time.sleep(min(120, 2 ** attempt))
+
+    raise RuntimeError(f"Failed to download after {DOWNLOAD_RETRIES} attempts: {url}")
 
 
 def _uncompress_and_delete_file(file_path: str):
@@ -405,3 +464,29 @@ def _validate_inputs(
         # ceil value for max_workers_download in the case of passed fraction.
         max_workers_download = math.ceil(max_workers_download)
         print(f'Continuing with max_workers_download={max_workers_download}')
+
+
+def _make_session() -> requests.Session:
+    session = requests.Session()
+    retry = Retry(
+        total=5,
+        connect=5,
+        read=5,
+        status=5,
+        backoff_factor=2,
+        status_forcelist=(429, 500, 502, 503, 504),
+        allowed_methods=("GET", "HEAD"),
+        raise_on_status=False,
+    )
+    adapter = HTTPAdapter(max_retries=retry, pool_connections=8, pool_maxsize=8)
+    session.mount("https://", adapter)
+    session.mount("http://", adapter)
+    return session
+
+
+def _remote_file_size(url: str, session: requests.Session) -> int | None:
+    r = session.head(url, allow_redirects=True, timeout=DOWNLOAD_TIMEOUT)
+    if r.status_code >= 400:
+        return None
+    size = r.headers.get("Content-Length")
+    return int(size) if size is not None else None
