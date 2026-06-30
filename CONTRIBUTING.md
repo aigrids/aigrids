@@ -25,11 +25,12 @@ To begin contributing:
 ```bash
 git clone https://github.com/aigrids/aigrids
 
-# or use your personal access token 
-git clone https://<your_personal_access_token>@github.com/aigrids/aigrids
-
 cd aigrids
 ```
+
+Note that when asked for authentication for private respositories, your password 
+is your personal access token and not your account login password.
+
 
 2. Create and switch to your personal development branch for making changes.
 ```bash
