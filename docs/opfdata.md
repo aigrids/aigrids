@@ -7,7 +7,7 @@ in the following fashion. For example, load the train_small_test_medium sub-task
 with:
 
 ```Python
-from aidotgrids import load_task
+from aigrids import load_task
 
 dataset = load_task(
     task_name='OPFData', 
