@@ -1,4 +1,4 @@
-# Contribution guidelines for aidotgrids
+# Contribution guidelines for aigrids
 
 ## Table of Contents
 - [Getting Started](#-getting-started)
@@ -23,12 +23,12 @@ All feature and personal development branches should originate from `main`.
 To begin contributing:
 1. Clone the repository
 ```bash
-git clone https://github.com/AI-grids/aidotgrids
+git clone https://github.com/aigrids/aigrids
 
 # or use your personal access token 
-git clone https://<your_personal_access_token>@github.com/AI-grids/aidotgrids
+git clone https://<your_personal_access_token>@github.com/aigrids/aigrids
 
-cd aidotgrids
+cd aigrids
 ```
 
 2. Create and switch to your personal development branch for making changes.
@@ -52,7 +52,7 @@ pip install -e ".[dev]"
 ```bash
 ruff check .
 pytest
-pytest --cov=aidotgrids
+pytest --cov=aigrids
 ```
 
 

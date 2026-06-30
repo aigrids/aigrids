@@ -2,6 +2,6 @@
 .venv
 .coverage
 dist
-src/aidotgrids.egg-info/
+src/aigrids.egg-info/
 notes.rtf
 **/__pycache__

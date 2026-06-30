@@ -1,4 +1,4 @@
-# aidotgrids
+# aigrids
 
 ## Overview
 
@@ -12,20 +12,20 @@
 Install stable version (option A):
 
 ```bash
-pip install -U aidotgrids
+pip install -U aigrids
 ```
 
 Or, install bleeding-edge version (Option B):
 
 ```bash
-pip uninstall -y aidotgrids         # ensure the PyPI version is removed
-pip install git+https://github.com/AI-grids/aidotgrids
+pip uninstall -y aigrids         # ensure the PyPI version is removed
+pip install git+https://github.com/aigrids/aigrids
 ```
 
 ## 2. Datasets
 
 All standardized tasks are hosted on Hugging Face Hub and can be downloaded 
-automatically via `aidotgrids.load`. Current coverage:
+automatically via `aigrids.load`. Current coverage:
 
 | Task / Dataset          | Modality                    | Docs                                   |
 | ----------------------- | --------------------------- | -------------------------------------- |
@@ -39,7 +39,7 @@ automatically via `aidotgrids.load`. Current coverage:
 Load a dataset in a few lines:
 
 ```Python
-from aidotgrids import load
+from aigrids import load
 
 ds = load.load_task(
     task_name="WindFarm",
