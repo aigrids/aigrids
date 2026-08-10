@@ -92,6 +92,12 @@ def load_task(
         train_frac,
         max_workers
     )
+
+    # augment datasets with useful arguments
+    subtask_data['task_name'] = task_name
+    subtask_data['subtask_name'] = subtask_name 
+    subtask_data['data_frac'] = data_frac
+    subtask_data['train_frac'] = train_frac 
     
     return subtask_data
 
