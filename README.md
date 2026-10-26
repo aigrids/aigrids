@@ -34,6 +34,7 @@ automatically via `aigrids.load`. Current coverage:
 | **SolarCube**           | Satellite imagery           | [details](docs/solarcube.md)           |
 | **BuildingElectricity** | Time-series load profiles   | [details](docs/buildingelectricity.md) |
 | **WindFarm**            | SCADA & weather             | [details](docs/windfarm.md)            |
+| **SystemImbalance**     | Balancing market time-series| [details](docs/systemimbalance.md)     |
 
 
 Load a dataset in a few lines:
