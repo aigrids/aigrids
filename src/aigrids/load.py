@@ -28,6 +28,7 @@ from . import powergraph
 from . import solarcube
 from . import buildingelectricity
 from . import windfarm
+from . import systemimbalance
 
 
 # Global variables
@@ -43,7 +44,8 @@ LIST_AVAIL_TASKNAMES = [
     'PowerGraph',
     'SolarCube',
     'BuildingElectricity',
-    'WindFarm'
+    'WindFarm',
+    'SystemImbalance'
 ]
 
 def load_task(
@@ -148,6 +150,14 @@ def _load_subtask(
         )
     elif 'WindFarm' in local_dir:
         subtask_data = windfarm.load(
+            local_dir,
+            subtask_name,
+            data_frac,
+            train_frac,
+            max_workers
+        )
+    elif 'SystemImbalance' in local_dir:
+        subtask_data = systemimbalance.load(
             local_dir,
             subtask_name,
             data_frac,
